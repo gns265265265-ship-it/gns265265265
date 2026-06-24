@@ -104,6 +104,8 @@
             font-weight: bold;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             transition: background-color 0.2s, opacity 0.2s;
+            /* 모바일에서 기본 스크롤 등 브라우저 기본 터치 액션을 차단하여 JS 이벤트가 정상 동작하게 함 */
+            touch-action: none;
         }
         .disk:active { cursor: grabbing; }
         .disk:not([draggable="true"]) {
@@ -229,6 +231,7 @@
                 disk.addEventListener('touchstart', handleTouchStart, {passive: false});
                 disk.addEventListener('touchmove', handleTouchMove, {passive: false});
                 disk.addEventListener('touchend', handleTouchEnd);
+                disk.addEventListener('touchcancel', handleTouchCancel); // 캔슬(앱 전환 등) 대응
                 
                 pegs[0].appendChild(disk);
             }
@@ -494,7 +497,8 @@
         }
 
         function handleDragEnd(e) {
-            e.target.style.opacity = '1';
+            if (!draggedDisk) return;
+            draggedDisk.style.opacity = '1';
             draggedDisk = null;
         }
 
@@ -599,9 +603,10 @@
             const touch = e.changedTouches[0];
             
             // 내 손가락 아래에 있는 목적지(기둥)를 찾기 위해 잡고 있는 원판을 아주 잠깐 숨김
-            draggedDisk.style.display = 'none';
+            // display: none을 사용하면 레이아웃이 무너지므로 visibility를 사용합니다.
+            draggedDisk.style.visibility = 'hidden';
             const elementUnderFinger = document.elementFromPoint(touch.clientX, touch.clientY);
-            draggedDisk.style.display = 'flex'; // 다시 원상복구
+            draggedDisk.style.visibility = 'visible'; // 다시 원상복구
 
             let targetPeg = elementUnderFinger ? elementUnderFinger.closest('.peg-container') : null;
 
@@ -610,6 +615,14 @@
             }
 
             // 그래픽 이동 위치 초기화 (성공하든 실패하든 제자리 배열로 쏙 들어가게)
+            draggedDisk.style.transform = 'translate(0px, 0px)';
+            draggedDisk = null;
+        }
+
+        function handleTouchCancel(e) {
+            if (!draggedDisk) return;
+            draggedDisk.style.opacity = '1';
+            draggedDisk.style.zIndex = '10';
             draggedDisk.style.transform = 'translate(0px, 0px)';
             draggedDisk = null;
         }
