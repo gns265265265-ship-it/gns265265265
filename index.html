@@ -174,6 +174,10 @@
         let autoPlayTimer = null;
         let usedAutoSolve = false; 
         let autoPlayTargetIndex = 0; 
+        
+        // 터치 이동을 위한 좌표 변수 추가
+        let initialTouchX = 0;
+        let initialTouchY = 0;
 
         const colors = ['#FF4136', '#FF851B', '#FFDC00', '#2ECC40', '#0074D9', '#B10DC9', '#85144b', '#F012BE'];
 
@@ -217,8 +221,14 @@
                 disk.style.transform = 'translate(0px, 0px)';
                 disk.style.transition = 'none';
 
+                // PC용 마우스 드래그 이벤트
                 disk.addEventListener('dragstart', handleDragStart);
                 disk.addEventListener('dragend', handleDragEnd);
+                
+                // 모바일용 터치 이벤트 추가
+                disk.addEventListener('touchstart', handleTouchStart, {passive: false});
+                disk.addEventListener('touchmove', handleTouchMove, {passive: false});
+                disk.addEventListener('touchend', handleTouchEnd);
                 
                 pegs[0].appendChild(disk);
             }
@@ -492,31 +502,25 @@
             e.preventDefault();
         }
 
-        function handleDrop(e) {
-            if (isAutoPlaying) return;
-            e.preventDefault();
-            
-            let targetPeg = e.target.closest('.peg-container');
-            if (!targetPeg || !draggedDisk) return;
-
+        // 공통 드롭(이동) 처리 로직을 함수로 분리 (PC, 모바일 공용)
+        function processDrop(disk, targetPeg) {
             const topDisk = targetPeg.lastElementChild;
-            const draggedSize = parseInt(draggedDisk.dataset.size);
+            const draggedSize = parseInt(disk.dataset.size);
             const topSize = topDisk ? parseInt(topDisk.dataset.size) : Infinity;
 
             if (draggedSize > topSize) {
                 alert("⚠️ 규칙 위반! 큰 원판을 작은 원판 위에 올릴 수 없습니다.");
-                return;
+                return false;
             }
 
-            const sourcePegId = draggedDisk.parentElement.dataset.peg;
+            const sourcePegId = disk.parentElement.dataset.peg;
             const targetPegId = targetPeg.dataset.peg;
 
             if (sourcePegId !== targetPegId) {
-                targetPeg.appendChild(draggedDisk);
+                targetPeg.appendChild(disk);
                 moves++;
                 document.getElementById('moves').innerText = moves;
                 
-                // 최적 경로 판별 로직 (가운데, 오른쪽 중 유효한 경로 확인)
                 if (!isDeviated) {
                     let matchedPaths = [];
                     if (validOptimalPaths.includes('B')) {
@@ -533,23 +537,83 @@
                     }
 
                     if (matchedPaths.length > 0) {
-                        // 올바른 최적 경로로 이동했을 경우
-                        validOptimalPaths = matchedPaths; // 가능한 경로로 타겟 좁히기
+                        validOptimalPaths = matchedPaths;
                         optimalIndex++;
-                        lastOptimalState = getCurrentGameState(); // 완벽한 상태 백업 갱신
+                        lastOptimalState = getCurrentGameState();
                     } else {
-                        // 최적 경로에서 벗어났을 경우
                         isDeviated = true;
                     }
                 }
                 
-                // 버튼 노출 여부 다시 확인
                 updateRevertButtonVisibility();
-
                 updateDraggableState();
                 checkWin();
             }
+            return true;
         }
+
+        function handleDrop(e) {
+            if (isAutoPlaying) return;
+            e.preventDefault();
+            
+            let targetPeg = e.target.closest('.peg-container');
+            if (!targetPeg || !draggedDisk) return;
+
+            processDrop(draggedDisk, targetPeg);
+        }
+
+        // --- 모바일 터치 이벤트 핸들러 시작 ---
+        function handleTouchStart(e) {
+            if (isAutoPlaying || e.target.getAttribute('draggable') !== 'true') return;
+            if (e.touches.length > 1) return; // 멀티터치 방지
+
+            draggedDisk = e.target;
+            initialTouchX = e.touches[0].clientX;
+            initialTouchY = e.touches[0].clientY;
+
+            draggedDisk.style.transition = 'none';
+            draggedDisk.style.opacity = '0.5';
+            draggedDisk.style.zIndex = '1000'; // 드래그 중 최상단 노출
+        }
+
+        function handleTouchMove(e) {
+            if (!draggedDisk) return;
+            e.preventDefault(); // 드래그 중 화면 스크롤 방지
+
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+
+            const deltaX = currentX - initialTouchX;
+            const deltaY = currentY - initialTouchY;
+
+            // 손가락 위치에 맞춰 그래픽 이동
+            draggedDisk.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+        }
+
+        function handleTouchEnd(e) {
+            if (!draggedDisk) return;
+
+            draggedDisk.style.opacity = '1';
+            draggedDisk.style.zIndex = '10';
+
+            const touch = e.changedTouches[0];
+            
+            // 내 손가락 아래에 있는 목적지(기둥)를 찾기 위해 잡고 있는 원판을 아주 잠깐 숨김
+            draggedDisk.style.display = 'none';
+            const elementUnderFinger = document.elementFromPoint(touch.clientX, touch.clientY);
+            draggedDisk.style.display = 'flex'; // 다시 원상복구
+
+            let targetPeg = elementUnderFinger ? elementUnderFinger.closest('.peg-container') : null;
+
+            if (targetPeg) {
+                processDrop(draggedDisk, targetPeg);
+            }
+
+            // 그래픽 이동 위치 초기화 (성공하든 실패하든 제자리 배열로 쏙 들어가게)
+            draggedDisk.style.transform = 'translate(0px, 0px)';
+            draggedDisk = null;
+        }
+        // --- 모바일 터치 이벤트 핸들러 끝 ---
 
         function checkWin() {
             const pegB = document.getElementById('pegB');
