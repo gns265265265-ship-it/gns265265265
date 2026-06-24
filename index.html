@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -17,17 +17,28 @@
             font-size: 18px;
             margin-bottom: 20px;
             display: flex;
+            flex-direction: column; /* 모바일에서는 위아래로 쌓이게 */
             justify-content: center;
             align-items: center;
-            gap: 20px;
+            gap: 15px;
+        }
+        @media (min-width: 768px) {
+            .info {
+                flex-direction: row; /* PC/태블릿에서는 가로로 배치 */
+            }
         }
         .controls {
             margin-bottom: 30px;
+            display: flex;
+            flex-wrap: wrap; /* 화면이 좁아지면 버튼이 아래로 예쁘게 줄바꿈됨 */
+            justify-content: center;
+            align-items: center;
+            gap: 10px; /* 버튼 간격 */
         }
         select, button {
             font-size: 16px;
-            padding: 8px 15px;
-            margin: 0 5px;
+            padding: 12px 15px; /* 모바일 터치가 쉽도록 버튼 높이를 살짝 늘림 */
+            margin: 0; /* 기존 마진 제거 (gap으로 대체) */
             cursor: pointer;
             border: 1px solid #ccc;
             border-radius: 5px;
@@ -133,9 +144,9 @@
         <button id="autoBtnHalf" class="auto-btn" onclick="toggleAutoSolve('half')">🤖 n-1개(이전 단계) 자동완성</button>
         <button id="autoBtnAll" class="auto-btn" onclick="toggleAutoSolve('all')">🤖 전체 자동완성</button>
 
-        <!-- AI 도우미 모드 토글 추가 -->
-        <label style="margin-left: 20px; cursor: pointer; font-size: 16px; font-weight: bold; color: #0074D9;">
-            <input type="checkbox" id="helperToggle" onchange="updateRevertButtonVisibility()" style="transform: scale(1.2); margin-right: 5px;"> AI 도우미 모드
+        <!-- AI 도우미 모드 토글 추가 (줄바꿈 시 자연스럽게 위치하도록 수정) -->
+        <label style="cursor: pointer; font-size: 16px; font-weight: bold; color: #0074D9; display: flex; align-items: center;">
+            <input type="checkbox" id="helperToggle" onchange="updateRevertButtonVisibility()" style="transform: scale(1.2); margin-right: 8px;"> AI 도우미 모드
         </label>
     </div>
 
